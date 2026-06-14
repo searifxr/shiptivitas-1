@@ -56,6 +56,74 @@ export default class Board extends React.Component {
     );
   }
 
+  componentDidMount(){
+      this.drake = Dragula([
+        this.swimlanes.backlog.current,
+        this.swimlanes.inProgress.current,
+        this.swimlanes.complete.current
+      ])
+
+      this.drake.on('drop', (element, target) => {
+        this.drake.cancel(true);
+        this.handleCardMove(element, target);
+      });
+  }
+
+  componentWillUnmount() {
+    if (this.drake) {
+      this.drake.destroy();
+    }
+  }
+
+  handleCardMove(element, target) {
+    if(!target) return;
+
+    const cardID = element.getAttribute('data-id')
+
+    let newStatus;
+    if(target === this.swimlanes.backlog.current){
+      newStatus = 'backlog'
+    }
+    else if(target === this.swimlanes.inProgress.current){
+      newStatus = 'in-progress'
+    }
+    else if(target === this.swimlanes.complete.current){
+      newStatus = 'complete'
+    }
+    
+    // Update through React state immediately
+    this.updateCardStatus(cardID, newStatus);
+  }
+
+  updateCardStatus(cardID, newStatus){
+    const updatedClients = {...this.state.clients}
+
+    let cardToMove = null;
+    Object.keys(updatedClients).forEach((swimlanes) => {
+      const cardIndex = updatedClients[swimlanes].findIndex( (client) => { return client.id === cardID})
+      if(cardIndex !== -1){
+        cardToMove = updatedClients[swimlanes][cardIndex]
+        updatedClients[swimlanes].splice(cardIndex, 1);
+      }
+    })
+
+    if(cardToMove){
+      cardToMove.status = newStatus;
+
+      if(newStatus === 'backlog'){
+        updatedClients.backlog.push(cardToMove)
+      }
+      else if(newStatus === 'in-progress'){
+        updatedClients.inProgress.push(cardToMove)
+      }
+      else if(newStatus === 'complete'){
+        updatedClients.complete.push(cardToMove)
+      }
+    }
+
+    this.setState({ clients: updatedClients})
+  }
+
   render() {
     return (
       <div className="Board">
